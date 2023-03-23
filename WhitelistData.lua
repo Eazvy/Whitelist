@@ -1,1 +1,3 @@
-return _G.WhitelistedKeys
+_G.WhitelistedKeys = {
+
+}
