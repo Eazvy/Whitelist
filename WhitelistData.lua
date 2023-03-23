@@ -1,1 +1,3 @@
+_G.WhitelistedKeys = {
 
+}
