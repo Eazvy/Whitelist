@@ -1,4 +1,0 @@
-_G.WhitelistedKeys = {
-
-}
-test
