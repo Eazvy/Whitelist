@@ -1,1 +1,4 @@
+_G.WhitelistedKeys = {
+
+}
 test
