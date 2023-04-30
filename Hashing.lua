@@ -391,47 +391,31 @@ if branch == "FFI" then
    function sha256_feed_64(H, str, offs, size)
       -- offs >= 0, size >= 0, size is multiple of 64
       local W, K = common_W_FFI_int32, sha2_K_hi
+      local str_len = #str
       for pos = offs, offs + size - 1, 64 do
-         for j = 0, 15 do
-            pos = pos + 4
-            local a, b, c, d = byte(str, pos - 3, pos)   -- slow, but doesn't depend on endianness
-            W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
-         end
-         for j = 16, 63 do
-            local a, b = W[j-15], W[j-2]
-            W[j] = NORM( XOR(ROR(a, 7), ROL(a, 14), SHR(a, 3)) + XOR(ROL(b, 15), ROL(b, 13), SHR(b, 10)) + W[j-7] + W[j-16] )
-         end
-         local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
-         for j = 0, 63, 8 do  -- Thanks to Peter Cawley for this workaround (unroll the loop to avoid "PHI shuffling too complex" due to PHIs overlap)
-            local z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j] + K[j+1] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+1] + K[j+2] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+2] + K[j+3] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+3] + K[j+4] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+4] + K[j+5] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+5] + K[j+6] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+6] + K[j+7] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(g, AND(e, XOR(f, g))) + XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + (W[j+7] + K[j+8] + h) )
-            h, g, f, e = g, f, e, NORM( d + z )
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-         end
-         H[1], H[2], H[3], H[4] = NORM(a + H[1]), NORM(b + H[2]), NORM(c + H[3]), NORM(d + H[4])
-         H[5], H[6], H[7], H[8] = NORM(e + H[5]), NORM(f + H[6]), NORM(g + H[7]), NORM(h + H[8])
-      end
-   end
+        for j = 0, 15 do
+          local a = str:sub(pos + j*4, pos + j*4):byte()
+          local b = str:sub(pos + j*4 + 1, pos + j*4 + 1):byte()
+          local c = str:sub(pos + j*4 + 2, pos + j*4 + 2):byte()
+          local d = str:sub(pos + j*4 + 3, pos + j*4 + 3):byte()
+          W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
+        end
+        for j = 16, 63 do
+          local a, b = W[j-15], W[j-2]
+          W[j] = NORM( XOR(ROR(a, 7), ROR(a, 18), SHR(a, 3)) + XOR(ROR(b, 17), ROR(b, 19), SHR(b, 10)) + W[j-7] + W[j-16] )
+        end
+        local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+        for j = 0, 63 do
+          local T1 = NORM( h + XOR(ROR(e, 6), ROR(e, 11), ROR(e, 25)) + XOR(AND(e, f), AND(NOT(e), g)) + K[j+1] + W[j] )
+          local T2 = NORM( XOR(ROR(a, 2), ROR(a, 13), ROR(a, 22)) + XOR(AND(a, b), AND(a, c), AND(b, c)) )
+          h, g, f, e, d, c, b, a = g, f, e, NORM(d + T1), c, b, a, NORM(T1 + T2)
+        end
+        H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] =
+          NORM(H[1] + a), NORM(H[2] + b), NORM(H[3] + c), NORM(H[4] + d),
+          NORM(H[5] + e), NORM(H[6] + f), NORM(H[7] + g), NORM(H[8] + h)
+        end
+    end
+
 
 
    local common_W_FFI_int64 = ffi.new("int64_t[?]", 80)
@@ -1071,48 +1055,31 @@ if branch == "LJ" then
 
    function sha256_feed_64(H, str, offs, size)
       -- offs >= 0, size >= 0, size is multiple of 64
-      local W, K = common_W, sha2_K_hi
+      local W, K = common_W_FFI_int32, sha2_K_hi
+      local str_len = #str
       for pos = offs, offs + size - 1, 64 do
-         for j = 1, 16 do
-            pos = pos + 4
-            local a, b, c, d = byte(str, pos - 3, pos)
-            W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
-         end
-         for j = 17, 64 do
-            local a, b = W[j-15], W[j-2]
-            W[j] = NORM( NORM( XOR(ROR(a, 7), ROL(a, 14), SHR(a, 3)) + XOR(ROL(b, 15), ROL(b, 13), SHR(b, 10)) ) + NORM( W[j-7] + W[j-16] ) )
-         end
-         local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
-         for j = 1, 64, 8 do  -- Thanks to Peter Cawley for this workaround (unroll the loop to avoid "PHI shuffling too complex" due to PHIs overlap)
-            local z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j] + W[j] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+1] + W[j+1] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+2] + W[j+2] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+3] + W[j+3] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+4] + W[j+4] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+5] + W[j+5] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+6] + W[j+6] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-            z = NORM( XOR(ROR(e, 6), ROR(e, 11), ROL(e, 7)) + XOR(g, AND(e, XOR(f, g))) + (K[j+7] + W[j+7] + h) )
-            h, g, f, e = g, f, e, NORM(d + z)
-            d, c, b, a = c, b, a, NORM( XOR(AND(a, XOR(b, c)), AND(b, c)) + XOR(ROR(a, 2), ROR(a, 13), ROL(a, 10)) + z )
-         end
-         H[1], H[2], H[3], H[4] = NORM(a + H[1]), NORM(b + H[2]), NORM(c + H[3]), NORM(d + H[4])
-         H[5], H[6], H[7], H[8] = NORM(e + H[5]), NORM(f + H[6]), NORM(g + H[7]), NORM(h + H[8])
-      end
-   end
+        for j = 0, 15 do
+          local a = str:sub(pos + j*4, pos + j*4):byte()
+          local b = str:sub(pos + j*4 + 1, pos + j*4 + 1):byte()
+          local c = str:sub(pos + j*4 + 2, pos + j*4 + 2):byte()
+          local d = str:sub(pos + j*4 + 3, pos + j*4 + 3):byte()
+          W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
+        end
+        for j = 16, 63 do
+          local a, b = W[j-15], W[j-2]
+          W[j] = NORM( XOR(ROR(a, 7), ROR(a, 18), SHR(a, 3)) + XOR(ROR(b, 17), ROR(b, 19), SHR(b, 10)) + W[j-7] + W[j-16] )
+        end
+        local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+        for j = 0, 63 do
+          local T1 = NORM( h + XOR(ROR(e, 6), ROR(e, 11), ROR(e, 25)) + XOR(AND(e, f), AND(NOT(e), g)) + K[j+1] + W[j] )
+          local T2 = NORM( XOR(ROR(a, 2), ROR(a, 13), ROR(a, 22)) + XOR(AND(a, b), AND(a, c), AND(b, c)) )
+          h, g, f, e, d, c, b, a = g, f, e, NORM(d + T1), c, b, a, NORM(T1 + T2)
+        end
+        H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] =
+          NORM(H[1] + a), NORM(H[2] + b), NORM(H[3] + c), NORM(H[4] + d),
+          NORM(H[5] + e), NORM(H[6] + f), NORM(H[7] + g), NORM(H[8] + h)
+        end
+    end
 
    local function ADD64_4(a_lo, a_hi, b_lo, b_hi, c_lo, c_hi, d_lo, d_hi)
       local sum_lo = a_lo % 2^32 + b_lo % 2^32 + c_lo % 2^32 + d_lo % 2^32
@@ -2283,9 +2250,17 @@ if branch == "INT32" then
 
    K_lo_modulo = 2^32
 
-   function HEX(x) -- returns string of 8 lowercase hexadecimal digits
-      return string_format("%08x", x)
-   end
+   function HEX(x)
+        local hexChars = "0123456789abcdef"
+        local result = ""
+        for i = 1, 8 do
+            local hexVal = bit.band(bit.rshift(x, (8-i)*4), 0xf)
+            result = result .. string.sub(hexChars, hexVal+1, hexVal+1)
+        end
+        return result
+    end
+
+
 
    XORA5, XOR_BYTE, sha256_feed_64, sha512_feed_128, md5_feed_64, sha1_feed_64, keccak_feed, blake2s_feed_64, blake2b_feed_128, blake3_feed_64 = load[=[-- branch "INT32"
       local md5_next_shift, md5_K, sha2_K_lo, sha2_K_hi, build_keccak_format, sha3_RC_lo, sha3_RC_hi, sigma, common_W, sha2_H_lo, sha2_H_hi, perm_blake3 = ...
@@ -4355,7 +4330,11 @@ end
 
 local function sha256ext(width, message)
    -- Create an instance (private objects for current calculation)
-   local H, length, tail = {unpack(sha2_H_ext256[width])}, 0.0, ""
+   local H, length, tail = {}, 0.0, ""
+
+   for i = 1, #sha2_H_ext256[width] do
+      H[i] = sha2_H_ext256[width][i]
+   end
 
    local function partial(message_part)
       if message_part then
@@ -4408,6 +4387,7 @@ local function sha256ext(width, message)
       return partial
    end
 end
+
 
 
 local function sha512ext(width, message)
