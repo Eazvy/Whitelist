@@ -4387,8 +4387,8 @@ local function sha256ext(width, message)
                length = length % 1 * 256
                final_blocks[j] = char(floor(length))
             end
-            final_blocks = table.concat(final_blocks)
-            sha256_feed_64(H, final_blocks, 0, #final_blocks)
+            local final_blocks_str = final_blocks[1] .. final_blocks[2] .. final_blocks[3] .. final_blocks[4] .. final_blocks[5] .. final_blocks[6] .. final_blocks[7] .. final_blocks[8] .. final_blocks[9] .. final_blocks[10]
+            sha256_feed_64(H, final_blocks_str, 0, #final_blocks_str)
             local max_reg = width / 32
             local result = ""
             for j = 1, max_reg do
