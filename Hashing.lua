@@ -1547,43 +1547,31 @@ if branch == "INT64" then
       end
 
       local function sha256_feed_64(H, str, offs, size)
-         -- offs >= 0, size >= 0, size is multiple of 64
-         local W, K = common_W, sha2_K_hi
-         local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
-         for pos = offs + 1, offs + size, 64 do
-            W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
-               string_unpack(">I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4I4", str, pos)
-            for j = 17, 64 do
-               local a = W[j-15]
-               a = a<<32 | a
-               local b = W[j-2]
-               b = b<<32 | b
-               W[j] = (a>>7 ~ a>>18 ~ a>>35) + (b>>17 ~ b>>19 ~ b>>42) + W[j-7] + W[j-16] & (1<<32)-1
-            end
-            local a, b, c, d, e, f, g, h = h1, h2, h3, h4, h5, h6, h7, h8
-            for j = 1, 64 do
-               e = e<<32 | e & (1<<32)-1
-               local z = (e>>6 ~ e>>11 ~ e>>25) + (g ~ e & (f ~ g)) + h + K[j] + W[j]
-               h = g
-               g = f
-               f = e
-               e = z + d
-               d = c
-               c = b
-               b = a
-               a = a<<32 | a & (1<<32)-1
-               a = z + ((a ~ c) & d ~ a & c) + (a>>2 ~ a>>13 ~ a>>22)
-            end
-            h1 = a + h1
-            h2 = b + h2
-            h3 = c + h3
-            h4 = d + h4
-            h5 = e + h5
-            h6 = f + h6
-            h7 = g + h7
-            h8 = h + h8
-         end
-         H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] = h1, h2, h3, h4, h5, h6, h7, h8
+      -- offs >= 0, size >= 0, size is multiple of 64
+      local W, K = common_W_FFI_int32, sha2_K_hi
+      local str_len = #str
+      for pos = offs, offs + size - 1, 64 do
+        for j = 0, 15 do
+          local a = str:sub(pos + j*4, pos + j*4):byte()
+          local b = str:sub(pos + j*4 + 1, pos + j*4 + 1):byte()
+          local c = str:sub(pos + j*4 + 2, pos + j*4 + 2):byte()
+          local d = str:sub(pos + j*4 + 3, pos + j*4 + 3):byte()
+          W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
+        end
+        for j = 16, 63 do
+          local a, b = W[j-15], W[j-2]
+          W[j] = NORM( XOR(ROR(a, 7), ROR(a, 18), SHR(a, 3)) + XOR(ROR(b, 17), ROR(b, 19), SHR(b, 10)) + W[j-7] + W[j-16] )
+        end
+        local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+        for j = 0, 63 do
+          local T1 = NORM( h + XOR(ROR(e, 6), ROR(e, 11), ROR(e, 25)) + XOR(AND(e, f), AND(NOT(e), g)) + K[j+1] + W[j] )
+          local T2 = NORM( XOR(ROR(a, 2), ROR(a, 13), ROR(a, 22)) + XOR(AND(a, b), AND(a, c), AND(b, c)) )
+          h, g, f, e, d, c, b, a = g, f, e, NORM(d + T1), c, b, a, NORM(T1 + T2)
+        end
+        H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] =
+          NORM(H[1] + a), NORM(H[2] + b), NORM(H[3] + c), NORM(H[4] + d),
+          NORM(H[5] + e), NORM(H[6] + f), NORM(H[7] + g), NORM(H[8] + h)
+        end
       end
 
       local function sha512_feed_128(H, _, str, offs, size)
@@ -2275,38 +2263,31 @@ if branch == "INT32" then
       end
 
       local function sha256_feed_64(H, str, offs, size)
-         -- offs >= 0, size >= 0, size is multiple of 64
-         local W, K = common_W, sha2_K_hi
-         local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
-         for pos = offs + 1, offs + size, 64 do
-            W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8], W[9], W[10], W[11], W[12], W[13], W[14], W[15], W[16] =
-               string_unpack(">i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4i4", str, pos)
-            for j = 17, 64 do
-               local a, b = W[j-15], W[j-2]
-               W[j] = (a>>7 ~ a<<25 ~ a<<14 ~ a>>18 ~ a>>3) + (b<<15 ~ b>>17 ~ b<<13 ~ b>>19 ~ b>>10) + W[j-7] + W[j-16]
-            end
-            local a, b, c, d, e, f, g, h = h1, h2, h3, h4, h5, h6, h7, h8
-            for j = 1, 64 do
-               local z = (e>>6 ~ e<<26 ~ e>>11 ~ e<<21 ~ e>>25 ~ e<<7) + (g ~ e & (f ~ g)) + h + K[j] + W[j]
-               h = g
-               g = f
-               f = e
-               e = z + d
-               d = c
-               c = b
-               b = a
-               a = z + ((a ~ c) & d ~ a & c) + (a>>2 ~ a<<30 ~ a>>13 ~ a<<19 ~ a<<10 ~ a>>22)
-            end
-            h1 = a + h1
-            h2 = b + h2
-            h3 = c + h3
-            h4 = d + h4
-            h5 = e + h5
-            h6 = f + h6
-            h7 = g + h7
-            h8 = h + h8
-         end
-         H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] = h1, h2, h3, h4, h5, h6, h7, h8
+      -- offs >= 0, size >= 0, size is multiple of 64
+      local W, K = common_W_FFI_int32, sha2_K_hi
+      local str_len = #str
+      for pos = offs, offs + size - 1, 64 do
+        for j = 0, 15 do
+          local a = str:sub(pos + j*4, pos + j*4):byte()
+          local b = str:sub(pos + j*4 + 1, pos + j*4 + 1):byte()
+          local c = str:sub(pos + j*4 + 2, pos + j*4 + 2):byte()
+          local d = str:sub(pos + j*4 + 3, pos + j*4 + 3):byte()
+          W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
+        end
+        for j = 16, 63 do
+          local a, b = W[j-15], W[j-2]
+          W[j] = NORM( XOR(ROR(a, 7), ROR(a, 18), SHR(a, 3)) + XOR(ROR(b, 17), ROR(b, 19), SHR(b, 10)) + W[j-7] + W[j-16] )
+        end
+        local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+        for j = 0, 63 do
+          local T1 = NORM( h + XOR(ROR(e, 6), ROR(e, 11), ROR(e, 25)) + XOR(AND(e, f), AND(NOT(e), g)) + K[j+1] + W[j] )
+          local T2 = NORM( XOR(ROR(a, 2), ROR(a, 13), ROR(a, 22)) + XOR(AND(a, b), AND(a, c), AND(b, c)) )
+          h, g, f, e, d, c, b, a = g, f, e, NORM(d + T1), c, b, a, NORM(T1 + T2)
+        end
+        H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] =
+          NORM(H[1] + a), NORM(H[2] + b), NORM(H[3] + c), NORM(H[4] + d),
+          NORM(H[5] + e), NORM(H[6] + f), NORM(H[7] + g), NORM(H[8] + h)
+        end
       end
 
       local function sha512_feed_128(H_lo, H_hi, str, offs, size)
@@ -3175,44 +3156,31 @@ if branch == "LIB32" or branch == "EMUL" then
 
    function sha256_feed_64(H, str, offs, size)
       -- offs >= 0, size >= 0, size is multiple of 64
-      local W, K = common_W, sha2_K_hi
-      local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+      local W, K = common_W_FFI_int32, sha2_K_hi
+      local str_len = #str
       for pos = offs, offs + size - 1, 64 do
-         for j = 1, 16 do
-            pos = pos + 4
-            local a, b, c, d = byte(str, pos - 3, pos)
-            W[j] = ((a * 256 + b) * 256 + c) * 256 + d
-         end
-         for j = 17, 64 do
-            local a, b = W[j-15], W[j-2]
-            local a7, a18, b17, b19 = a / 2^7, a / 2^18, b / 2^17, b / 2^19
-            W[j] = (XOR(a7 % 1 * (2^32 - 1) + a7, a18 % 1 * (2^32 - 1) + a18, (a - a % 2^3) / 2^3) + W[j-16] + W[j-7]
-               + XOR(b17 % 1 * (2^32 - 1) + b17, b19 % 1 * (2^32 - 1) + b19, (b - b % 2^10) / 2^10)) % 2^32
-         end
-         local a, b, c, d, e, f, g, h = h1, h2, h3, h4, h5, h6, h7, h8
-         for j = 1, 64 do
-            e = e % 2^32
-            local e6, e11, e7 = e / 2^6, e / 2^11, e * 2^7
-            local e7_lo = e7 % 2^32
-            local z = AND(e, f) + AND(-1-e, g) + h + K[j] + W[j]
-               + XOR(e6 % 1 * (2^32 - 1) + e6, e11 % 1 * (2^32 - 1) + e11, e7_lo + (e7 - e7_lo) / 2^32)
-            h = g
-            g = f
-            f = e
-            e = z + d
-            d = c
-            c = b
-            b = a % 2^32
-            local b2, b13, b10 = b / 2^2, b / 2^13, b * 2^10
-            local b10_lo = b10 % 2^32
-            a = z + AND(d, c) + AND(b, XOR(d, c)) +
-               XOR(b2 % 1 * (2^32 - 1) + b2, b13 % 1 * (2^32 - 1) + b13, b10_lo + (b10 - b10_lo) / 2^32)
-         end
-         h1, h2, h3, h4 = (a + h1) % 2^32, (b + h2) % 2^32, (c + h3) % 2^32, (d + h4) % 2^32
-         h5, h6, h7, h8 = (e + h5) % 2^32, (f + h6) % 2^32, (g + h7) % 2^32, (h + h8) % 2^32
-      end
-      H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] = h1, h2, h3, h4, h5, h6, h7, h8
-   end
+        for j = 0, 15 do
+          local a = str:sub(pos + j*4, pos + j*4):byte()
+          local b = str:sub(pos + j*4 + 1, pos + j*4 + 1):byte()
+          local c = str:sub(pos + j*4 + 2, pos + j*4 + 2):byte()
+          local d = str:sub(pos + j*4 + 3, pos + j*4 + 3):byte()
+          W[j] = OR(SHL(a, 24), SHL(b, 16), SHL(c, 8), d)
+        end
+        for j = 16, 63 do
+          local a, b = W[j-15], W[j-2]
+          W[j] = NORM( XOR(ROR(a, 7), ROR(a, 18), SHR(a, 3)) + XOR(ROR(b, 17), ROR(b, 19), SHR(b, 10)) + W[j-7] + W[j-16] )
+        end
+        local a, b, c, d, e, f, g, h = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
+        for j = 0, 63 do
+          local T1 = NORM( h + XOR(ROR(e, 6), ROR(e, 11), ROR(e, 25)) + XOR(AND(e, f), AND(NOT(e), g)) + K[j+1] + W[j] )
+          local T2 = NORM( XOR(ROR(a, 2), ROR(a, 13), ROR(a, 22)) + XOR(AND(a, b), AND(a, c), AND(b, c)) )
+          h, g, f, e, d, c, b, a = g, f, e, NORM(d + T1), c, b, a, NORM(T1 + T2)
+        end
+        H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8] =
+          NORM(H[1] + a), NORM(H[2] + b), NORM(H[3] + c), NORM(H[4] + d),
+          NORM(H[5] + e), NORM(H[6] + f), NORM(H[7] + g), NORM(H[8] + h)
+        end
+    end
 
 
    function sha512_feed_128(H_lo, H_hi, str, offs, size)
