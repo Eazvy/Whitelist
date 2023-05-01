@@ -390,13 +390,13 @@ if branch == "FFI" then
 
    function sha256_feed_64(H, str, offs, size)
         -- offs >= 0, size >= 0, size is multiple of 64
-      local W, K = common_W_FFI_int32, sha2_K_hi
+      local W, K = {}, sha2_K_hi
       local str_len = #str
-      local str_ptr = ffi.cast("const uint8_t*", str)
+      local str_bytes = {string.byte(str, offs, offs + size - 1)}
       for pos = offs, offs + size - 1, 64 do
         for j = 0, 15 do
-          local a = str_ptr + pos + j*4
-          W[j] = bit.bor(bit.lshift(a[0], 24), bit.lshift(a[1], 16), bit.lshift(a[2], 8), a[3])
+          local a = pos + j*4
+          W[j] = bit.bor(bit.lshift(str_bytes[a+1], 24), bit.lshift(str_bytes[a+2], 16), bit.lshift(str_bytes[a+3], 8), str_bytes[a+4])
         end
         for j = 16, 63 do
           local a, b = W[j-15], W[j-2]
@@ -1062,13 +1062,13 @@ if branch == "LJ" then
 
    function sha256_feed_64(H, str, offs, size)
         -- offs >= 0, size >= 0, size is multiple of 64
-      local W, K = common_W_FFI_int32, sha2_K_hi
+      local W, K = {}, sha2_K_hi
       local str_len = #str
-      local str_ptr = ffi.cast("const uint8_t*", str)
+      local str_bytes = {string.byte(str, offs, offs + size - 1)}
       for pos = offs, offs + size - 1, 64 do
         for j = 0, 15 do
-          local a = str_ptr + pos + j*4
-          W[j] = bit.bor(bit.lshift(a[0], 24), bit.lshift(a[1], 16), bit.lshift(a[2], 8), a[3])
+          local a = pos + j*4
+          W[j] = bit.bor(bit.lshift(str_bytes[a+1], 24), bit.lshift(str_bytes[a+2], 16), bit.lshift(str_bytes[a+3], 8), str_bytes[a+4])
         end
         for j = 16, 63 do
           local a, b = W[j-15], W[j-2]
@@ -3222,13 +3222,13 @@ if branch == "LIB32" or branch == "EMUL" then
 
    function sha256_feed_64(H, str, offs, size)
         -- offs >= 0, size >= 0, size is multiple of 64
-      local W, K = common_W_FFI_int32, sha2_K_hi
+      local W, K = {}, sha2_K_hi
       local str_len = #str
-      local str_ptr = ffi.cast("const uint8_t*", str)
+      local str_bytes = {string.byte(str, offs, offs + size - 1)}
       for pos = offs, offs + size - 1, 64 do
         for j = 0, 15 do
-          local a = str_ptr + pos + j*4
-          W[j] = bit.bor(bit.lshift(a[0], 24), bit.lshift(a[1], 16), bit.lshift(a[2], 8), a[3])
+          local a = pos + j*4
+          W[j] = bit.bor(bit.lshift(str_bytes[a+1], 24), bit.lshift(str_bytes[a+2], 16), bit.lshift(str_bytes[a+3], 8), str_bytes[a+4])
         end
         for j = 16, 63 do
           local a, b = W[j-15], W[j-2]
